@@ -30,6 +30,16 @@ if [[ -z "${XAUTHORITY:-}" ]]; then
 fi
 export XAUTHORITY
 
+# -- Notification helper -----------------------------------------------------
+_notify() {
+    local direction="$1" content="$2"
+    local preview
+    preview=$(printf '%s' "$content" | head -c 60 | tr '\n\r\t' '   ')
+    [[ ${#content} -gt 60 ]] && preview="${preview}…"
+    notify-send -t 3000 -i edit-paste \
+        "Clipboard → ${direction}" "$preview" 2>/dev/null || true
+}
+
 # -- Wait until X11 accepts connections (up to 30 s) --------------------------
 WAIT=0
 until timeout 1 xclip -selection clipboard -o > /dev/null 2>&1 \
@@ -88,6 +98,7 @@ tail -F "$SYNERGY_LOG" 2>/dev/null \
         [[ "$cur_x11" = "$cur_wl" ]] && { printf '%s' "$h" > "$HASH_FILE"; continue; }
         printf '%s' "$cur_x11" | wl-copy 2>/dev/null || true
         printf '%s' "$h" > "$HASH_FILE"
+        _notify "Wayland (from Windows)" "$cur_x11"
     done &
 
 # -- Main sync loop -----------------------------------------------------------
@@ -116,6 +127,7 @@ while true; do
     if [[ -n "$cur_x11" && "$h_x11" != "$last" ]]; then
         printf '%s' "$cur_x11" | wl-copy 2>/dev/null || true
         printf '%s' "$h_x11" > "$HASH_FILE"
+        _notify "Wayland (from Windows)" "$cur_x11"
 
     # Wayland changed -> Linux app copied -> push to X11 for Synergy to detect
     elif [[ -n "$cur_wl" && "$h_wl" != "$last" ]]; then
@@ -127,5 +139,6 @@ while true; do
         XCLIP_PID=$!
         printf '%s' "$XCLIP_PID" > "$XCLIP_PID_FILE"
         printf '%s' "$h_wl" > "$HASH_FILE"
+        _notify "Windows (from Linux)" "$cur_wl"
     fi
 done
