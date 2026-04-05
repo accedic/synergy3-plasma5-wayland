@@ -7,7 +7,7 @@
 
 ## Table of Contents
 
-1. [The Problem (10+ year community issue)](#the-problem)
+1. [The Problem](#the-problem)
 2. [What This Fix Does](#what-this-fix-does)
 3. [Prerequisites](#prerequisites)
 4. [Quick Install](#quick-install)
