@@ -1,8 +1,8 @@
 [Desktop Entry]
 Name=Synergy XWayland environment fix
-Comment=Injects XAUTHORITY into the systemd user session so Synergy clipboard works on Wayland
+Comment=Injects DISPLAY and XAUTHORITY into the systemd user session so Synergy can connect to XWayland
 Type=Application
-Exec=/bin/bash -c "systemctl --user import-environment DISPLAY XAUTHORITY && systemctl --user restart synergy.service synergy-clip-bridge.service"
+Exec=/bin/bash -c "systemctl --user import-environment DISPLAY XAUTHORITY && systemctl --user restart synergy.service"
 X-KDE-autostart-phase=2
 X-KDE-autostart-after=panel
 X-GNOME-Autostart-enabled=true

@@ -13,13 +13,12 @@
 4. [Quick Install](#quick-install)
 5. [Manual Install](#manual-install)
 6. [Configuration — screen size](#configuration)
-7. [Clipboard Sync (X11 ↔ Wayland)](#clipboard-sync)
-8. [Expected Output](#expected-output)
-9. [Troubleshooting](#troubleshooting)
-10. [Tested On](#tested-on)
-11. [How It Works (overview)](#how-it-works)
-12. [Technical Deep-Dive](#technical-deep-dive)
-13. [License](#license)
+7. [Expected Output](#expected-output)
+8. [Troubleshooting](#troubleshooting)
+9. [Tested On](#tested-on)
+10. [How It Works (overview)](#how-it-works)
+11. [Technical Deep-Dive](#technical-deep-dive)
+12. [License](#license)
 
 ---
 
@@ -90,13 +89,6 @@ The fix has four parts:
    drops the connection every ~9 seconds.  The bridge reads correct dimensions
    from `SYNERGY_SCREEN_W` / `SYNERGY_SCREEN_H` environment variables set in
    the systemd drop-in.
-
-4. **Clipboard sync bridge** — KWin 5.27's XWayland clipboard bridge is
-   completely broken: content copied from Windows (in Synergy's X11 clipboard)
-   never reaches Wayland apps, and Wayland clipboard changes never reach
-   Synergy for forwarding to Windows.  `synergy-clip-bridge.sh` is a small
-   systemd service that polls every 0.4 s and also reacts immediately to
-   Synergy's "entering screen" log event to sync both directions.
 
 ---
 
@@ -248,72 +240,6 @@ systemctl --user restart synergy.service
 
 ---
 
-## Clipboard Sync
-
-KWin 5.27 (KDE Plasma 5) does not synchronise the clipboard between XWayland
-(`:1`) and Wayland.  Synergy writes Windows clipboard content to the X11
-CLIPBOARD selection — but your Wayland apps never see it.  Conversely, text
-you copy in a Wayland app is invisible to Synergy's X11 clipboard reader.
-
-The clipboard bridge (`synergy-clip-bridge.service`) fixes both directions.
-
-### How it works
-
-```
-Windows → Linux (X11→Wayland):
-  Synergy receives clipboard from server
-  → calls XSetSelectionOwner (X11 CLIPBOARD owner = synergy-core)
-  → bridge polls X11, detects new content
-  → fast-path: also triggers within 0.3 s of "entering screen" log event
-  → calls wl-copy to push content to Wayland
-  → Ctrl+V in any Wayland app now pastes the Windows clipboard ✓
-
-Linux → Windows (Wayland→X11):
-  User copies in a Wayland app (wl-copy, Kate, Firefox, …)
-  → bridge polls Wayland, detects new content
-  → starts xclip -loops 0 as X11 CLIPBOARD owner with the Wayland content
-  → Synergy polls X11, reads the new content
-  → next time cursor moves to Windows, Synergy pushes to Windows clipboard ✓
-```
-
-### Design notes
-
-- **Hash-file dedup** (`/tmp/synergy-clip-last-hash`) stores an MD5 of the
-  last-synced content as a file — not an in-process variable — so the state
-  survives service restarts and prevents feedback loops.
-- **Singleton** via `flock(1)` prevents duplicate bridge processes even if
-  `Restart=on-failure` triggers during a restart.
-- **xclip -loops 0** is used **only** for the Wayland→X11 direction.  Synergy
-  can displace it at any time by calling `XSetSelectionOwner`.  It is *never*
-  kept alive in the Windows→Linux direction — doing so would block Synergy from
-  setting the X11 clipboard with new Windows content.
-
-### Important: XAUTHORITY injection
-
-The clipboard bridge and Synergy both need `DISPLAY=:1` and a valid
-`XAUTHORITY` pointing to the XWayland auth file.  These are injected at login
-by a KDE autostart entry (`~/.config/autostart/synergy-xenv.desktop`) that
-runs:
-
-```bash
-systemctl --user import-environment DISPLAY XAUTHORITY
-systemctl --user restart synergy.service synergy-clip-bridge.service
-```
-
-The autostart entry is installed by `install.sh` automatically.
-
-### Clipboard not working after Synergy update or X server restart
-
-The XAUTHORITY path changes on every login (`/run/user/1000/xauth_XXXXXXXX`).
-The autostart entry re-imports it at login, so a re-login is all that is
-normally needed.
-
-If clipboard is still broken after re-login:
-```bash
-systemctl --user status synergy-clip-bridge.service
-journalctl --user -u synergy-clip-bridge.service -n 20
-```
-
 ---
 
 ## Configuration
@@ -428,49 +354,6 @@ Screen dimensions exceed 32767 (SInt16 max).  Use smaller values.
 ### Synergy connects but disconnects every ~9 seconds
 
 Old symptom of the DINF bug.  Check your screen dimensions.
-
-### Clipboard not syncing (Windows→Linux)
-
-1. Check that the bridge service is running:
-   ```bash
-   systemctl --user status synergy-clip-bridge.service
-   ```
-2. Verify Synergy is actually receiving the Windows clipboard:
-   ```bash
-   grep "clipboard was updated" ~/.local/state/Synergy/synergy.log | tail -5
-   ```
-   If nothing appears after switching screens from Windows, the Synergy
-   **server** (Windows process) is not detecting clipboard changes.  Restart
-   Synergy on Windows.
-
-3. If Synergy does receive the clipboard but it still doesn't paste on Linux:
-   ```bash
-   DISPLAY=:1 XAUTHORITY=$(cat /proc/$(pgrep -f synergy-clip-bridge.sh)/environ \
-     | tr '\0' '\n' | grep ^XAUTHORITY= | cut -d= -f2-) \
-     xclip -selection clipboard -o
-   wl-paste
-   ```
-   Both should show the same content.  If X11 has the content but Wayland does
-   not, the bridge poll hasn't fired yet — wait 0.4 s or check service logs.
-
-### Clipboard not syncing (Linux→Windows)
-
-1. Copy text on Linux and check that X11 clipboard was updated:
-   ```bash
-   DISPLAY=:1 XAUTHORITY=/run/user/1000/xauth_* xclip -selection clipboard -o
-   ```
-2. Move the cursor to Windows and check the Windows clipboard.
-3. If X11 has content but Synergy hasn't forwarded it, check Synergy log for
-   clipboard events after you exit the Linux screen.
-
-### Stale clipboard content after bridge restart
-
-If you see unexpected old content (e.g. test strings from a previous session),
-delete the hash file to reset the bridge state:
-```bash
-rm /tmp/synergy-clip-last-hash
-systemctl --user restart synergy-clip-bridge.service
-```
 
 ### Hot-patch log shows bias = 0
 

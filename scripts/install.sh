@@ -166,38 +166,16 @@ EOF
 
 info "Drop-in: $SYSTEMD_DROP_IN"
 
-# ── step 9: clipboard bridge ──────────────────────────────────────────────
-heading "Clipboard bridge (X11 <-> Wayland)"
-# KWin 5.27 does not reliably sync the clipboard between XWayland and Wayland.
-# Install a lightweight polling bridge that covers both directions.
-
-CLIP_BRIDGE_SCRIPT="$HOME/.local/bin/synergy-clip-bridge.sh"
-CLIP_BRIDGE_SERVICE="$HOME/.config/systemd/user/synergy-clip-bridge.service"
+# ── step 9: autostart entry (re-import XAUTHORITY at login) ─────────────────
+heading "KDE autostart entry"
 AUTOSTART_DESKTOP="$HOME/.config/autostart/synergy-xenv.desktop"
-
-# Install xclip if missing (wl-clipboard is a hard dep, usually present)
-if command -v apt-get &>/dev/null; then
-    install_pkg xclip
-    install_pkg wl-clipboard
-fi
-
-mkdir -p "$HOME/.local/bin"
-cp "$REPO_DIR/scripts/synergy-clip-bridge.sh" "$CLIP_BRIDGE_SCRIPT"
-chmod +x "$CLIP_BRIDGE_SCRIPT"
-info "Bridge script: $CLIP_BRIDGE_SCRIPT"
-
-cp "$REPO_DIR/systemd/synergy-clip-bridge.service" "$CLIP_BRIDGE_SERVICE"
-info "Bridge service: $CLIP_BRIDGE_SERVICE"
-
-# KDE autostart: import XAUTHORITY at login and restart both services
 mkdir -p "$(dirname "$AUTOSTART_DESKTOP")"
 cp "$REPO_DIR/autostart/synergy-xenv.desktop" "$AUTOSTART_DESKTOP"
 info "Autostart entry: $AUTOSTART_DESKTOP"
 
-# ── step 10: reload and restart synergy + clipboard bridge ────────────────
-heading "Restarting Synergy + clipboard bridge"
+# ── step 10: reload and restart synergy ──────────────────────────────────
+heading "Restarting Synergy"
 systemctl --user daemon-reload
-systemctl --user enable synergy-clip-bridge.service
 if systemctl --user import-environment DISPLAY XAUTHORITY 2>/dev/null; then
     true  # imported successfully
 fi
@@ -214,9 +192,6 @@ else
     warn "  LD_PRELOAD=$SO_FILE SYNERGY_SCREEN_W=$SW SYNERGY_SCREEN_H=$SH $SYNERGY_BIN"
 fi
 
-systemctl --user restart synergy-clip-bridge.service && info "synergy-clip-bridge.service started" || \
-    warn "Could not start clipboard bridge service (may need re-login for XAUTHORITY)"
-
 # ── done ─────────────────────────────────────────────────────────────────
 heading "Done"
 echo
@@ -230,9 +205,6 @@ echo "  [eis-bridge] EIS server ready, client fd = N"
 echo "  [eis-bridge] pointer uinput device created"
 echo "  [eis-bridge] keyboard uinput device created"
 echo "  NOTE: connected to server"
-echo
-echo "Check clipboard bridge:"
-echo "  journalctl --user -u synergy-clip-bridge.service -f"
 echo
 echo "If the offset check fails (unexpected bytes), re-run:"
 echo "  nm $SYNERGY_BIN | grep xdp_session_connect_to_eis"

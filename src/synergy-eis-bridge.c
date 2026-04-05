@@ -151,9 +151,11 @@ static void detect_screen_size(void)
 {
     const char *sw = getenv("SYNERGY_SCREEN_W");
     const char *sh = getenv("SYNERGY_SCREEN_H");
-    if (sw && sh) {
+    if (sw && sh)
+    {
         int w = atoi(sw), h = atoi(sh);
-        if (w > 0 && w <= 32767 && h > 0 && h <= 32767) {
+        if (w > 0 && w <= 32767 && h > 0 && h <= 32767)
+        {
             screen_w = w;
             screen_h = h;
             LOG("screen size from env: %dx%d", screen_w, screen_h);
@@ -172,15 +174,16 @@ static int uinput_fd_kbd = -1;
 static int uinput_open_pointer(void)
 {
     int fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK | O_CLOEXEC);
-    if (fd < 0) {
+    if (fd < 0)
+    {
         LOG("open /dev/uinput (ptr) failed: %s", strerror(errno));
         return -1;
     }
 
-    ioctl(fd, UI_SET_EVBIT,  EV_KEY);
-    ioctl(fd, UI_SET_EVBIT,  EV_ABS);
-    ioctl(fd, UI_SET_EVBIT,  EV_REL);
-    ioctl(fd, UI_SET_EVBIT,  EV_SYN);
+    ioctl(fd, UI_SET_EVBIT, EV_KEY);
+    ioctl(fd, UI_SET_EVBIT, EV_ABS);
+    ioctl(fd, UI_SET_EVBIT, EV_REL);
+    ioctl(fd, UI_SET_EVBIT, EV_SYN);
 
     ioctl(fd, UI_SET_KEYBIT, BTN_LEFT);
     ioctl(fd, UI_SET_KEYBIT, BTN_RIGHT);
@@ -196,16 +199,16 @@ static int uinput_open_pointer(void)
     ioctl(fd, UI_SET_RELBIT, REL_WHEEL);
     ioctl(fd, UI_SET_RELBIT, REL_HWHEEL);
 
-    struct uinput_abs_setup abs_x = { .code = ABS_X,
-        .absinfo = { .minimum = 0, .maximum = screen_w } };
-    struct uinput_abs_setup abs_y = { .code = ABS_Y,
-        .absinfo = { .minimum = 0, .maximum = screen_h } };
+    struct uinput_abs_setup abs_x = {.code = ABS_X,
+                                     .absinfo = {.minimum = 0, .maximum = screen_w}};
+    struct uinput_abs_setup abs_y = {.code = ABS_Y,
+                                     .absinfo = {.minimum = 0, .maximum = screen_h}};
     ioctl(fd, UI_ABS_SETUP, &abs_x);
     ioctl(fd, UI_ABS_SETUP, &abs_y);
 
     struct uinput_setup usetup = {0};
     usetup.id.bustype = BUS_VIRTUAL;
-    usetup.id.vendor  = 0x1234;
+    usetup.id.vendor = 0x1234;
     usetup.id.product = 0x5678;
     strncpy(usetup.name, "Synergy EIS Pointer", UINPUT_MAX_NAME_SIZE);
 
@@ -223,7 +226,8 @@ static int uinput_open_pointer(void)
 static int uinput_open_keyboard(void)
 {
     int fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK | O_CLOEXEC);
-    if (fd < 0) {
+    if (fd < 0)
+    {
         LOG("open /dev/uinput (kbd) failed: %s", strerror(errno));
         return -1;
     }
@@ -236,7 +240,7 @@ static int uinput_open_keyboard(void)
 
     struct uinput_setup usetup = {0};
     usetup.id.bustype = BUS_VIRTUAL;
-    usetup.id.vendor  = 0x1234;
+    usetup.id.vendor = 0x1234;
     usetup.id.product = 0x5679;
     strncpy(usetup.name, "Synergy EIS Keyboard", UINPUT_MAX_NAME_SIZE);
 
@@ -254,8 +258,8 @@ static int uinput_open_keyboard(void)
 static void uinput_emit(int fd, int type, int code, int value)
 {
     struct input_event ev = {0};
-    ev.type  = type;
-    ev.code  = code;
+    ev.type = type;
+    ev.code = code;
     ev.value = value;
     if (write(fd, &ev, sizeof(ev)) < 0)
         LOG("uinput write error: %s", strerror(errno));
@@ -268,9 +272,10 @@ static void uinput_sync(int fd)
 
 /* ── EIS server background thread ── */
 
-struct eis_thread_ctx {
-    struct eis        *eis;
-    struct eis_seat   *seat;
+struct eis_thread_ctx
+{
+    struct eis *eis;
+    struct eis_seat *seat;
     struct eis_device *dev_ptr;
     struct eis_device *dev_kbd;
 };
@@ -281,11 +286,14 @@ static void *eis_server_thread(void *arg)
     struct eis *eis = ctx->eis;
     int eis_fd = eis_get_fd(eis);
 
-    while (1) {
-        struct pollfd pfd = { .fd = eis_fd, .events = POLLIN };
+    while (1)
+    {
+        struct pollfd pfd = {.fd = eis_fd, .events = POLLIN};
         int r = poll(&pfd, 1, -1);
-        if (r < 0) {
-            if (errno == EINTR) continue;
+        if (r < 0)
+        {
+            if (errno == EINTR)
+                continue;
             LOG("poll error: %s", strerror(errno));
             break;
         }
@@ -295,11 +303,14 @@ static void *eis_server_thread(void *arg)
         eis_dispatch(eis);
 
         struct eis_event *ev;
-        while ((ev = eis_get_event(eis)) != NULL) {
+        while ((ev = eis_get_event(eis)) != NULL)
+        {
             enum eis_event_type t = eis_event_get_type(ev);
-            switch (t) {
+            switch (t)
+            {
 
-            case EIS_EVENT_CLIENT_CONNECT: {
+            case EIS_EVENT_CLIENT_CONNECT:
+            {
                 struct eis_client *client = eis_event_get_client(ev);
                 LOG("EI client connected: %s", eis_client_get_name(client));
 
@@ -314,8 +325,10 @@ static void *eis_server_thread(void *arg)
                 break;
             }
 
-            case EIS_EVENT_SEAT_BIND: {
-                if (!ctx->seat) break;
+            case EIS_EVENT_SEAT_BIND:
+            {
+                if (!ctx->seat)
+                    break;
 
                 ctx->dev_ptr = eis_seat_new_device(ctx->seat);
                 eis_device_configure_name(ctx->dev_ptr, "Synergy pointer");
@@ -344,10 +357,12 @@ static void *eis_server_thread(void *arg)
                 break;
             }
 
-            case EIS_EVENT_POINTER_MOTION: {
+            case EIS_EVENT_POINTER_MOTION:
+            {
                 double dx = eis_event_pointer_get_dx(ev);
                 double dy = eis_event_pointer_get_dy(ev);
-                if (uinput_fd_ptr >= 0) {
+                if (uinput_fd_ptr >= 0)
+                {
                     uinput_emit(uinput_fd_ptr, EV_REL, REL_X, (int)dx);
                     uinput_emit(uinput_fd_ptr, EV_REL, REL_Y, (int)dy);
                     uinput_sync(uinput_fd_ptr);
@@ -355,10 +370,12 @@ static void *eis_server_thread(void *arg)
                 break;
             }
 
-            case EIS_EVENT_POINTER_MOTION_ABSOLUTE: {
+            case EIS_EVENT_POINTER_MOTION_ABSOLUTE:
+            {
                 double ax = eis_event_pointer_get_absolute_x(ev);
                 double ay = eis_event_pointer_get_absolute_y(ev);
-                if (uinput_fd_ptr >= 0) {
+                if (uinput_fd_ptr >= 0)
+                {
                     uinput_emit(uinput_fd_ptr, EV_ABS, ABS_X, (int)ax);
                     uinput_emit(uinput_fd_ptr, EV_ABS, ABS_Y, (int)ay);
                     uinput_sync(uinput_fd_ptr);
@@ -366,20 +383,24 @@ static void *eis_server_thread(void *arg)
                 break;
             }
 
-            case EIS_EVENT_BUTTON_BUTTON: {
+            case EIS_EVENT_BUTTON_BUTTON:
+            {
                 uint32_t btn = eis_event_button_get_button(ev);
                 bool pressed = eis_event_button_get_is_press(ev);
-                if (uinput_fd_ptr >= 0) {
+                if (uinput_fd_ptr >= 0)
+                {
                     uinput_emit(uinput_fd_ptr, EV_KEY, btn, pressed ? 1 : 0);
                     uinput_sync(uinput_fd_ptr);
                 }
                 break;
             }
 
-            case EIS_EVENT_SCROLL_DELTA: {
+            case EIS_EVENT_SCROLL_DELTA:
+            {
                 double sdx = eis_event_scroll_get_dx(ev);
                 double sdy = eis_event_scroll_get_dy(ev);
-                if (uinput_fd_ptr >= 0) {
+                if (uinput_fd_ptr >= 0)
+                {
                     if (sdy != 0)
                         uinput_emit(uinput_fd_ptr, EV_REL, REL_WHEEL, sdy > 0 ? -1 : 1);
                     if (sdx != 0)
@@ -389,7 +410,8 @@ static void *eis_server_thread(void *arg)
                 break;
             }
 
-            case EIS_EVENT_SCROLL_DISCRETE: {
+            case EIS_EVENT_SCROLL_DISCRETE:
+            {
                 /*
                  * Standard scroll-wheel events.  libeis reports them in
                  * units of 120 per detent (Linux / Windows convention).
@@ -398,7 +420,8 @@ static void *eis_server_thread(void *arg)
                  */
                 int32_t ddx = eis_event_scroll_get_discrete_dx(ev);
                 int32_t ddy = eis_event_scroll_get_discrete_dy(ev);
-                if (uinput_fd_ptr >= 0) {
+                if (uinput_fd_ptr >= 0)
+                {
                     if (ddy != 0)
                         uinput_emit(uinput_fd_ptr, EV_REL, REL_WHEEL, -(ddy / 120));
                     if (ddx != 0)
@@ -413,10 +436,12 @@ static void *eis_server_thread(void *arg)
                 /* nothing to do for uinput */
                 break;
 
-            case EIS_EVENT_KEYBOARD_KEY: {
+            case EIS_EVENT_KEYBOARD_KEY:
+            {
                 uint32_t key = eis_event_keyboard_get_key(ev);
                 bool pressed = eis_event_keyboard_get_key_is_press(ev);
-                if (uinput_fd_kbd >= 0) {
+                if (uinput_fd_kbd >= 0)
+                {
                     uinput_emit(uinput_fd_kbd, EV_KEY, key, pressed ? 1 : 0);
                     uinput_sync(uinput_fd_kbd);
                 }
@@ -466,31 +491,36 @@ static int bridge_connect_to_eis(void *session, void *error_ptr)
 
     LOG("intercepted xdp_session_connect_to_eis — creating EIS server");
 
-    if (uinput_fd_ptr < 0) {
+    if (uinput_fd_ptr < 0)
+    {
         uinput_fd_ptr = uinput_open_pointer();
         if (uinput_fd_ptr < 0)
             LOG("WARNING: pointer uinput unavailable — check /dev/uinput permissions");
     }
-    if (uinput_fd_kbd < 0) {
+    if (uinput_fd_kbd < 0)
+    {
         uinput_fd_kbd = uinput_open_keyboard();
         if (uinput_fd_kbd < 0)
             LOG("WARNING: keyboard uinput unavailable");
     }
 
     struct eis *eis = eis_new(NULL);
-    if (!eis) {
+    if (!eis)
+    {
         LOG("eis_new failed");
         return -1;
     }
 
-    if (eis_setup_backend_fd(eis) < 0) {
+    if (eis_setup_backend_fd(eis) < 0)
+    {
         LOG("eis_setup_backend_fd failed");
         eis_unref(eis);
         return -1;
     }
 
     int client_fd = eis_backend_fd_add_client(eis);
-    if (client_fd < 0) {
+    if (client_fd < 0)
+    {
         LOG("eis_backend_fd_add_client failed: %s", strerror(errno));
         eis_unref(eis);
         return -1;
@@ -505,7 +535,8 @@ static int bridge_connect_to_eis(void *session, void *error_ptr)
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    if (pthread_create(&tid, &attr, eis_server_thread, ctx) != 0) {
+    if (pthread_create(&tid, &attr, eis_server_thread, ctx) != 0)
+    {
         LOG("pthread_create failed: %s", strerror(errno));
         free(ctx);
         eis_unref(eis);
@@ -533,13 +564,16 @@ static int bridge_connect_to_eis(void *session, void *error_ptr)
 static unsigned long find_synergy_bias(void)
 {
     FILE *f = fopen("/proc/self/maps", "r");
-    if (!f) return 0;
+    if (!f)
+        return 0;
 
     char line[512];
     unsigned long bias = 0;
 
-    while (fgets(line, sizeof(line), f)) {
-        if (!strstr(line, "synergy-core")) continue;
+    while (fgets(line, sizeof(line), f))
+    {
+        if (!strstr(line, "synergy-core"))
+            continue;
 
         unsigned long va_start, va_end, file_off;
         char perms[8];
@@ -547,7 +581,8 @@ static unsigned long find_synergy_bias(void)
                    &va_start, &va_end, perms, &file_off) != 4)
             continue;
 
-        if (file_off == 0) {
+        if (file_off == 0)
+        {
             bias = va_start;
             break;
         }
@@ -570,13 +605,13 @@ static unsigned long find_synergy_bias(void)
  *  5. Write the 14-byte absolute-indirect JMP trampoline.
  *  6. Restore page protection to RX.
  */
-__attribute__((constructor))
-static void bridge_init(void)
+__attribute__((constructor)) static void bridge_init(void)
 {
     detect_screen_size();
 
     unsigned long bias = find_synergy_bias();
-    if (!bias) {
+    if (!bias)
+    {
         /* Not running inside synergy-core — nothing to patch. */
         return;
     }
@@ -601,8 +636,8 @@ static void bridge_init(void)
         return;
     }
 
-    long     page_size = sysconf(_SC_PAGESIZE);
-    uint8_t *page      = (uint8_t *)((uintptr_t)target & ~(uintptr_t)(page_size - 1));
+    long page_size = sysconf(_SC_PAGESIZE);
+    uint8_t *page = (uint8_t *)((uintptr_t)target & ~(uintptr_t)(page_size - 1));
 
     if (mprotect(page, (size_t)(page_size * 2),
                  PROT_READ | PROT_WRITE | PROT_EXEC) != 0)
