@@ -66,11 +66,8 @@ SYNERGY_LOG="${HOME}/.local/state/Synergy/synergy.log"
 tail -F "$SYNERGY_LOG" 2>/dev/null \
     | grep --line-buffered "entering screen" \
     | while IFS= read -r _; do
-        # Step 1: kill xclip NOW before Synergy calls XSetSelectionOwner
-        xclip_pid=$(cat "$XCLIP_PID_FILE" 2>/dev/null || true)
-        if [[ -n "$xclip_pid" ]] && kill -0 "$xclip_pid" 2>/dev/null; then
-            kill "$xclip_pid" 2>/dev/null || true
-        fi
+        # Step 1: kill ALL bridge xclip instances NOW (pkill avoids PID-file sync races)
+        pkill -f 'xclip -selection clipboard -loops 0' 2>/dev/null || true
         : > "$XCLIP_PID_FILE"
 
         # Step 2: brief pause for Synergy to call XSetSelectionOwner
@@ -131,10 +128,8 @@ while true; do
 
     # Wayland changed -> Linux app copied -> push to X11 for Synergy to detect
     elif [[ -n "$cur_wl" && "$h_wl" != "$last" ]]; then
-        if [[ -n "$XCLIP_PID" ]] && kill -0 "$XCLIP_PID" 2>/dev/null; then
-            kill "$XCLIP_PID" 2>/dev/null || true
-            wait "$XCLIP_PID" 2>/dev/null || true
-        fi
+        pkill -f 'xclip -selection clipboard -loops 0' 2>/dev/null || true
+        sleep 0.1
         printf '%s' "$cur_wl" | xclip -selection clipboard -loops 0 2>/dev/null &
         XCLIP_PID=$!
         printf '%s' "$XCLIP_PID" > "$XCLIP_PID_FILE"
