@@ -67,7 +67,7 @@
  *   3. Spawns a background thread that relays libeis events → /dev/uinput.
  *
  * Mouse and keyboard events from the Windows host then flow:
- *   ryzord (Windows) ──TCP/TLS──► synergy-core ──libei──► our EIS server
+ *   windows-host ──TCP/TLS──► synergy-core ──libei──► our EIS server
  *   ──► /dev/uinput ──► KWin Wayland input stack ──► applications
  *
  * ─── NOTE ON SCREEN DIMENSIONS ──────────────────────────────────────────────

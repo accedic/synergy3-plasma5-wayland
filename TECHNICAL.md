@@ -28,12 +28,12 @@ approach solves it at the binary level.
 
 | Component | Version |
 |---|---|
-| OS | Ubuntu 22.04 LTS (thinkbuntu) |
+| OS | Ubuntu 22.04 LTS |
 | Desktop | KDE Plasma 5.27.12 |
 | Compositor | KWin 5.27.11 (Wayland) |
 | Synergy | 3.3.1 |
 | Binary | `/opt/Synergy/synergy-core` |
-| Server | Windows (ryzord), Synergy 3.3.1 |
+| Server | Windows, Synergy 3.3.1 |
 
 ---
 
@@ -397,7 +397,7 @@ coordinates map correctly.
 ## Event Flow Summary
 
 ```
-Windows host (ryzord)
+Windows host
   │
   │  TCP/TLS port 24800  (Synergy protocol)
   ▼

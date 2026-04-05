@@ -24,9 +24,15 @@
 
 ## The Problem
 
-Synergy has never worked reliably on KDE Plasma / Wayland.  The symptom is
-always the same: Synergy connects, then immediately disconnects, over and over.
-The GUI shows it restarting continuously with no meaningful error message.
+Synergy 3.x does not work on KDE Plasma 5 Wayland. The symptom looks like a
+connect/disconnect loop: the GUI shows Synergy restarting continuously with no
+meaningful error message. What is actually happening is that `synergy-core`
+crashes within milliseconds of starting — it calls `xdp_session_connect_to_eis()`,
+gets `-1` back (KWin 5 never implemented EIS), and immediately calls
+`g_main_loop_quit`. systemd's `Restart=always` respawns it, creating the loop.
+
+KDE Plasma 6 added EIS support in KWin 6 so the crash no longer occurs there,
+but Plasma 5 users are fully locked out.
 
 ### Why it happens
 
