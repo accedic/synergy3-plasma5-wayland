@@ -1,0 +1,12 @@
+[Unit]
+Description=Synergy clipboard bridge (X11 <-> Wayland)
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/synergy-clip-bridge.sh
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=graphical-session.target
